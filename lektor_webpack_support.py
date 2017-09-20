@@ -5,7 +5,7 @@ from lektor.reporter import reporter
 from lektor.utils import locate_executable, portable_popen
 
 
-class WebpackSupportPlugin(Plugin):
+class FrontendBuildPlugin(Plugin):
     name = 'Webpack Support Plugin'
     description = 'Super simple plugin that runs a front-end tooling build or start command'
 
@@ -15,6 +15,7 @@ class WebpackSupportPlugin(Plugin):
 
     def on_env_setup(self, **extra):
         # todo: set default to 'frontend'
+        # todo: handle case where it might not exist
         frontend_source = self.get_config().get('frontend_source')
         frontend_root = os.path.join(self.env.root_path, frontend_source);
         self.env.jinja_env.globals['frontend_root'] = frontend_root
@@ -23,7 +24,7 @@ class WebpackSupportPlugin(Plugin):
     def is_enabled(self, extra_flags):
         return bool(extra_flags.get('frontend'))
 
-    def run_webpack(self, watch=False):
+    def run_npm_script(self, watch=False):
         # TODO load config from
         # https://www.getlektor.com/docs/api/plugins/plugin/get-config/
         # https://www.getlektor.com/docs/api/plugins/plugin/config-filename/
@@ -49,26 +50,26 @@ class WebpackSupportPlugin(Plugin):
         portable_popen([pkg_manager, 'install'], cwd=frontend_root).wait()
 
     def on_server_spawn(self, **extra):
-        extra_flags = extra.get("extra_flags") or extra.get("build_flags") or {}
+        extra_flags = extra.get('extra_flags') or extra.get('build_flags') or {}
         if not self.is_enabled(extra_flags):
             return
         self.install_node_dependencies()
-        reporter.report_generic('Spawning node watcher')
-        self.node_process = self.run_webpack(watch=True)
+        reporter.report_generic('Spawning node.js watcher')
+        self.node_process = self.run_npm_script(watch=True)
 
     def on_server_stop(self, **extra):
         if self.node_process is not None:
-            reporter.report_generic('Stopping webpack watcher')
+            reporter.report_generic('Stopping node.js process')
             self.node_process.kill()
 
     def on_before_build_all(self, builder, **extra):
         extra_flags = getattr(
-            builder, "extra_flags", getattr(builder, "build_flags", None)
+            builder, 'extra_flags', getattr(builder, 'build_flags', None)
         )
         if not self.is_enabled(extra_flags) \
            or self.node_process is not None:
             return
         self.install_node_dependencies()
-        reporter.report_generic('Starting webpack build')
-        self.run_webpack().wait()
-        reporter.report_generic('Webpack build finished')
+        reporter.report_generic('Starting front-end build')
+        self.run_npm_script().wait()
+        reporter.report_generic('Front-end build finished')

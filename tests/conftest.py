@@ -4,7 +4,7 @@ from lektor.builder import Builder
 from lektor.db import Database
 from lektor.project import Project
 from lektor.environment import Environment
-from lektor_webpack_support import WebpackSupportPlugin
+from lektor_frontend_build import FrontendBuildPlugin
 
 
 @pytest.fixture(scope='function')
@@ -27,12 +27,12 @@ def pad(env):
 def builder(tmpdir, pad):
     output_dir = str(tmpdir.mkdir("output"))
     try:
-        return Builder(pad, output_dir, extra_flags=('webpack',))
+        return Builder(pad, output_dir, extra_flags=('frontend',))
     except TypeError:
-        return Builder(pad, output_dir, build_flags=('webpack',))
+        return Builder(pad, output_dir, build_flags=('frontend',))
 
 
 
 @pytest.fixture
 def plugin(env):
-    return WebpackSupportPlugin(env, "testing")
+    return FrontendBuildPlugin(env, "testing")
